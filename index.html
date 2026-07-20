@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>우리집 전기계량기</title>
+<style>
+  :root{
+    --bg: #14181a;
+    --panel: #1c2225;
+    --panel-2: #232a2d;
+    --line: #313a3e;
+    --text: #eef1f0;
+    --sub: #9aa7ab;
+    --dial-1: #5fb88c;   /* 1단계 - 여유 */
+    --dial-2: #e0a63d;   /* 2단계 - 주의 */
+    --dial-3: #d9603b;   /* 3단계 - 경고 */
+    --accent: #d9603b;
+    --focus: #7fd1c0;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom: 60px;
+  }
+  header.top{
+    padding: 22px 18px 14px;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top:0; z-index:5;
+    background: linear-gradient(180deg, var(--bg) 70%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  header.top h1{
+    font-size: 20px; margin:0 0 2px; letter-spacing:-0.01em; font-weight:700;
+    display:flex; align-items:center; gap:8px;
+  }
+  header.top h1 .dot{
+    width:9px; height:9px; border-radius:50%; background:var(--dial-1);
+    box-shadow:0 0 0 3px rgba(95,184,140,0.18);
+    flex:none;
+  }
+  header.top p{margin:0; color:var(--sub); font-size:13px;}
+
+  nav.tabs{
+    display:flex; gap:6px; padding: 12px 18px 0; max-width:560px; margin:0 auto;
+  }
+  nav.tabs button{
+    flex:1; padding:9px 6px; font-size:13.5px; border-radius:10px 10px 0 0;
+    background:transparent; color:var(--sub); border:none; border-bottom:2px solid transparent;
+    cursor:pointer; font-weight:600; font-family:inherit;
+  }
+  nav.tabs button.active{ color:var(--text); border-bottom:2px solid var(--accent); }
+
+  main{max-width:560px; margin:0 auto; padding: 16px 18px 40px;}
+  section.panel{display:none;}
+  section.panel.active{display:block; animation: fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .card{
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .card h2{font-size:14px; margin:0 0 12px; color:var(--sub); font-weight:700; letter-spacing:.02em;}
+
+  label{display:block; font-size:12.5px; color:var(--sub); margin-bottom:5px;}
+  input, select{
+    width:100%; padding:10px 11px; border-radius:9px; border:1px solid var(--line);
+    background: var(--panel-2); color:var(--text); font-size:15px; font-family:inherit;
+  }
+  input:focus, select:focus{ outline:none; border-color: var(--focus); box-shadow:0 0 0 3px rgba(127,209,192,0.15); }
+  .row{display:flex; gap:10px;}
+  .row > div{flex:1;}
+  .field{margin-bottom:12px;}
+
+  button.btn{
+    padding:10px 14px; border-radius:9px; border:1px solid var(--line);
+    background: var(--panel-2); color:var(--text); font-size:14px; font-weight:600;
+    cursor:pointer; font-family:inherit;
+  }
+  button.btn.primary{ background: var(--accent); border-color:var(--accent); color:#1a1210; }
+  button.btn.ghost{ background:transparent; }
+  button.btn.small{ padding:6px 10px; font-size:12.5px; }
+  button.btn:active{ transform: translateY(1px); }
+  button.btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+  table.log{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  table.log th{ text-align:right; color:var(--sub); font-weight:600; font-size:12px; padding:6px 4px; border-bottom:1px solid var(--line);}
+  table.log th:first-child, table.log td:first-child{text-align:left;}
+  table.log td{ padding:8px 4px; border-bottom:1px solid var(--line); text-align:right; }
+  table.log td.del{ text-align:center; }
+  table.log tr:last-child td{border-bottom:none;}
+  .muted{color:var(--sub); font-size:12.5px;}
+  .empty{ text-align:center; color:var(--sub); padding:22px 0; font-size:13px; }
+
+  /* 다이얼(계량기 신호) */
+  .dial-wrap{ display:flex; align-items:center; gap:18px; }
+  .dial-num{flex:1;}
+  .dial-num .big{ font-size:30px; font-weight:800; letter-spacing:-0.01em; }
+  .dial-num .big span{ font-size:15px; font-weight:600; color:var(--sub); margin-left:3px;}
+  .dial-num .tag{
+    display:inline-block; margin-top:6px; padding:3px 9px; border-radius:20px;
+    font-size:12px; font-weight:700;
+  }
+  .tag.t1{ background:rgba(95,184,140,.16); color:var(--dial-1); }
+  .tag.t2{ background:rgba(224,166,61,.16); color:var(--dial-2); }
+  .tag.t3{ background:rgba(217,96,59,.16); color:var(--dial-3); }
+
+  .breakdown{ width:100%; font-size:13.5px; border-collapse:collapse; }
+  .breakdown td{ padding:7px 2px; border-bottom:1px solid var(--line); }
+  .breakdown td:last-child{ text-align:right; font-variant-numeric: tabular-nums; }
+  .breakdown tr.total td{ font-weight:800; font-size:15px; border-bottom:none; padding-top:12px; color:var(--text); }
+  .breakdown tr.total-est td{ font-weight:800; color:var(--accent); font-size:16px; border-top:1px dashed var(--line); padding-top:12px;}
+
+  .note{ font-size:12px; color:var(--sub); background:var(--panel-2); border-radius:9px; padding:10px 11px; margin-top:10px; }
+
+  details.adv{ margin-top:6px; }
+  details.adv summary{ cursor:pointer; font-size:13px; color:var(--sub); font-weight:600; padding:4px 0; }
+  details.adv .field{ margin-top:10px; }
+
+  .sync-status{ font-size:12px; color:var(--sub); margin-top:8px; }
+  .sync-status.ok{ color: var(--dial-1); }
+  .sync-status.err{ color: var(--dial-3); }
+
+  ::placeholder{ color:#5c6669; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1><span class="dot" id="statusDot"></span>우리집 전기계량기</h1>
+  <p>매일 계량기 숫자만 적으면, 누진세까지 계산해서 이번 달 전기요금을 알려드려요.</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="input">검침 입력</button>
+  <button class="tab-btn" data-tab="bill">이번 달 요금</button>
+  <button class="tab-btn" data-tab="settings">설정</button>
+</nav>
+
+<main>
+
+  <!-- ================= 검침 입력 ================= -->
+  <section class="panel active" id="tab-input">
+    <div class="card">
+      <h2>오늘 계량기 숫자 입력</h2>
+      <div class="row">
+        <div class="field">
+          <label>검침 날짜</label>
+          <input type="date" id="inDate">
+        </div>
+        <div class="field">
+          <label>계량기 지침 (kWh)</label>
+          <input type="number" id="inValue" step="0.1" min="0" placeholder="예: 12345.6">
+        </div>
+      </div>
+      <button class="btn primary" id="btnAdd" style="width:100%;">저장</button>
+      <p class="muted" id="diffPreview" style="margin-top:8px;"></p>
+    </div>
+
+    <div class="card">
+      <h2>검침 기록</h2>
+      <div id="logTableWrap"></div>
+    </div>
+  </section>
+
+  <!-- ================= 이번 달 요금 ================= -->
+  <section class="panel" id="tab-bill">
+    <div class="card">
+      <h2>정산 월 선택</h2>
+      <input type="month" id="billMonth">
+    </div>
+
+    <div class="card">
+      <h2>이번 달 사용량</h2>
+      <div class="dial-wrap">
+        <svg id="dialSvg" width="86" height="86" viewBox="0 0 86 86"></svg>
+        <div class="dial-num">
+          <div class="big" id="totalKwh">0<span>kWh</span></div>
+          <div class="tag t1" id="tierTag">1단계</div>
+        </div>
+      </div>
+      <p class="muted" id="dayInfo" style="margin-top:12px;"></p>
+    </div>
+
+    <div class="card">
+      <h2>요금 상세 계산 (한전 표준 기준)</h2>
+      <table class="breakdown" id="breakdownTable"></table>
+      <div class="note" id="calNote"></div>
+    </div>
+  </section>
+
+  <!-- ================= 설정 ================= -->
+  <section class="panel" id="tab-settings">
+
+    <div class="card">
+      <h2>가족과 공유하기 (GitHub)</h2>
+      <p class="muted" style="margin-top:-4px;">깃허브 저장소에 검침 기록을 저장하면, 같은 저장소·토큰을 등록한 가족 모두가 같은 데이터를 보게 됩니다. 토큰은 이 브라우저에만 저장되고 절대 저장소에 올라가지 않아요.</p>
+      <div class="field" style="margin-top:12px;">
+        <label>저장소 (owner/repo)</label>
+        <input type="text" id="ghRepo" placeholder="예: hunsak/electric-bill">
+      </div>
+      <div class="field">
+        <label>데이터 파일 경로</label>
+        <input type="text" id="ghPath" placeholder="data/electric.json">
+      </div>
+      <div class="field">
+        <label>GitHub Personal Access Token (쓰기 권한, 선택)</label>
+        <input type="password" id="ghToken" placeholder="공유 저장(쓰기)할 사람만 입력">
+      </div>
+      <div class="row">
+        <button class="btn" id="btnPull" style="flex:1;">불러오기</button>
+        <button class="btn primary" id="btnPush" style="flex:1;">가족과 공유 저장</button>
+      </div>
+      <div class="sync-status" id="syncStatus">아직 동기화하지 않았어요.</div>
+    </div>
+
+    <div class="card">
+      <h2>기준 고지서로 보정하기</h2>
+      <p class="muted" style="margin-top:-4px;">실제 관리비 고지서 금액을 넣으면, 표준 계산식과의 차이(공용전기료 등)를 보정해서 더 정확한 예상 금액을 보여줘요.</p>
+      <div class="row">
+        <div class="field">
+          <label>기준 월 사용량 (kWh)</label>
+          <input type="number" id="calKwh" step="0.1" value="245">
+        </div>
+        <div class="field">
+          <label>기준 월 실제 청구액 (원)</label>
+          <input type="number" id="calWon" step="1" value="52080">
+        </div>
+      </div>
+      <button class="btn" id="btnCal" style="width:100%;">보정계수 적용</button>
+      <p class="muted" id="calRatio" style="margin-top:8px;"></p>
+    </div>
+
+    <div class="card">
+      <details class="adv">
+        <summary>요금 단가 직접 수정 (한전 기준 자동 반영, 필요시 변경)</summary>
+        <div class="field">
+          <label>기본요금 (1/2/3단계, 원)</label>
+          <div class="row">
+            <input type="number" id="basic1" value="910">
+            <input type="number" id="basic2" value="1600">
+            <input type="number" id="basic3" value="7300">
+          </div>
+        </div>
+        <div class="field">
+          <label>전력량요금 (1/2/3단계, 원/kWh)</label>
+          <div class="row">
+            <input type="number" id="energy1" step="0.1" value="120">
+            <input type="number" id="energy2" step="0.1" value="214.6">
+            <input type="number" id="energy3" step="0.1" value="307.3">
+          </div>
+        </div>
+        <div class="field">
+          <label>일반 구간 상한 (1단계 / 2단계, kWh)</label>
+          <div class="row">
+            <input type="number" id="normalCut1" value="200">
+            <input type="number" id="normalCut2" value="400">
+          </div>
+        </div>
+        <div class="field">
+          <label>여름철(7~8월) 구간 상한 (1단계 / 2단계, kWh)</label>
+          <div class="row">
+            <input type="number" id="summerCut1" value="300">
+            <input type="number" id="summerCut2" value="450">
+          </div>
+        </div>
+        <div class="field">
+          <label>기후환경요금 / 연료비조정요금 (원/kWh)</label>
+          <div class="row">
+            <input type="number" id="climateRate" step="0.1" value="9">
+            <input type="number" id="fuelRate" step="0.1" value="5">
+          </div>
+        </div>
+        <div class="field">
+          <label>부가가치세 / 전력산업기반기금 (%)</label>
+          <div class="row">
+            <input type="number" id="vatRate" step="0.1" value="10">
+            <input type="number" id="fundRate" step="0.1" value="3.7">
+          </div>
+        </div>
+        <button class="btn" id="btnSaveRates" style="width:100%; margin-top:6px;">단가 저장</button>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>초기화</h2>
+      <button class="btn ghost" id="btnReset" style="width:100%; color:var(--dial-3); border-color:var(--dial-3);">이 기기의 저장 데이터 모두 삭제</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- 상태 & 저장 ---------------- */
+  const LS_READINGS = "eb_readings";
+  const LS_RATES    = "eb_rates";
+  const LS_GH       = "eb_gh";      // owner/repo, path (토큰 제외)
+  const LS_TOKEN    = "eb_token";   // 토큰은 별도 보관, 공유 JSON에는 절대 포함하지 않음
+
+  const defaultRates = {
+    basic:  [910, 1600, 7300],
+    energy: [120, 214.6, 307.3],
+    normalCut:  [200, 400],
+    summerCut:  [300, 450],
+    climate: 9,
+    fuel: 5,
+    vat: 10,
+    fund: 3.7,
+    calibration: 1.0
+  };
+
+  function load(key, fallback){
+    try{
+      const v = localStorage.getItem(key);
+      return v ? JSON.parse(v) : fallback;
+    }catch(e){ return fallback; }
+  }
+  function save(key, val){
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+
+  let readings = load(LS_READINGS, []); // [{date:'YYYY-MM-DD', value: number}]
+  let rates    = Object.assign({}, defaultRates, load(LS_RATES, {}));
+  let ghConfig = load(LS_GH, { repo:"", path:"data/electric.json" });
+  let ghToken  = localStorage.getItem(LS_TOKEN) || "";
+
+  readings.sort((a,b)=> a.date.localeCompare(b.date));
+
+  /* ---------------- 탭 전환 ---------------- */
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+      if(btn.dataset.tab === "bill") renderBill();
+    });
+  });
+
+  /* ---------------- 검침 입력 ---------------- */
+  const inDate = document.getElementById("inDate");
+  const inValue = document.getElementById("inValue");
+  const today = new Date();
+  inDate.value = today.toISOString().slice(0,10);
+
+  function prevReadingBefore(dateStr){
+    const before = readings.filter(r=> r.date < dateStr);
+    return before.length ? before[before.length-1] : null;
+  }
+
+  function updateDiffPreview(){
+    const d = inDate.value, v = parseFloat(inValue.value);
+    const prev = prevReadingBefore(d);
+    const el = document.getElementById("diffPreview");
+    if(!d || isNaN(v)){ el.textContent = ""; return; }
+    if(prev){
+      const diff = v - prev.value;
+      el.textContent = diff >= 0
+        ? `이전 검침(${prev.date}) 대비 ${diff.toFixed(1)} kWh 사용`
+        : `⚠ 이전 검침(${prev.date})보다 작은 값이에요. 지침을 다시 확인해 주세요.`;
+    } else {
+      el.textContent = "첫 검침 기록이에요. 다음 검침부터 사용량이 계산돼요.";
+    }
+  }
+  inDate.addEventListener("input", updateDiffPreview);
+  inValue.addEventListener("input", updateDiffPreview);
+
+  document.getElementById("btnAdd").addEventListener("click", ()=>{
+    const d = inDate.value;
+    const v = parseFloat(inValue.value);
+    if(!d || isNaN(v)){ alert("날짜와 계량기 숫자를 입력해 주세요."); return; }
+    const existing = readings.find(r=> r.date === d);
+    if(existing){ existing.value = v; }
+    else { readings.push({date:d, value:v}); }
+    readings.sort((a,b)=> a.date.localeCompare(b.date));
+    save(LS_READINGS, readings);
+    inValue.value = "";
+    updateDiffPreview();
+    renderLog();
+  });
+
+  function renderLog(){
+    const wrap = document.getElementById("logTableWrap");
+    if(readings.length === 0){
+      wrap.innerHTML = '<div class="empty">아직 기록이 없어요. 오늘 계량기 숫자부터 입력해 보세요.</div>';
+      return;
+    }
+    let rows = "";
+    const rev = readings.slice().reverse();
+    rev.forEach((r, idx)=>{
+      const i = readings.length - 1 - idx;
+      const prev = i > 0 ? readings[i-1] : null;
+      const diff = prev ? (r.value - prev.value) : null;
+      rows += `<tr>
+        <td>${r.date}</td>
+        <td>${r.value.toFixed(1)}</td>
+        <td>${diff===null ? "-" : diff.toFixed(1)}</td>
+        <td class="del"><button class="btn small ghost" data-del="${r.date}">삭제</button></td>
+      </tr>`;
+    });
+    wrap.innerHTML = `<table class="log">
+      <tr><th>날짜</th><th>지침</th><th>사용량</th><th></th></tr>
+      ${rows}
+    </table>`;
+    wrap.querySelectorAll("[data-del]").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        readings = readings.filter(r=> r.date !== b.dataset.del);
+        save(LS_READINGS, readings);
+        renderLog();
+        updateDiffPreview();
+      });
+    });
+  }
+
+  /* ---------------- 요금 계산 ---------------- */
+  const billMonth = document.getElementById("billMonth");
+  billMonth.value = today.toISOString().slice(0,7);
+
+  function isSummer(monthStr){
+    const m = parseInt(monthStr.split("-")[1], 10);
+    return m === 7 || m === 8;
+  }
+
+  function monthlyUsage(monthStr){
+    // monthStr: 'YYYY-MM'. 두 검침 사이 사용량 중, '끝나는 날짜'가 해당 월에 속하는 구간을 합산.
+    let total = 0, count = 0, lastDate = null, firstDateInMonth = null;
+    for(let i=1;i<readings.length;i++){
+      const cur = readings[i], prev = readings[i-1];
+      if(cur.date.slice(0,7) === monthStr){
+        const diff = cur.value - prev.value;
+        if(diff >= 0){
+          total += diff;
+          count++;
+          if(!firstDateInMonth) firstDateInMonth = prev.date;
+          lastDate = cur.date;
+        }
+      }
+    }
+    return { total, count, firstDateInMonth, lastDate };
+  }
+
+  function calcBill(totalKwh, summer){
+    const cuts = summer ? rates.summerCut : rates.normalCut;
+    const [c1, c2] = cuts;
+    const [b1, b2, b3] = rates.basic;
+    const [e1, e2, e3] = rates.energy;
+
+    let basicFee, tierLabel, tierIdx;
+    if(totalKwh <= c1){ basicFee = b1; tierLabel = "1단계"; tierIdx = 1; }
+    else if(totalKwh <= c2){ basicFee = b2; tierLabel = "2단계"; tierIdx = 2; }
+    else { basicFee = b3; tierLabel = "3단계"; tierIdx = 3; }
+
+    const t1 = Math.min(totalKwh, c1);
+    const t2 = Math.max(0, Math.min(totalKwh, c2) - c1);
+    const t3 = Math.max(0, totalKwh - c2);
+
+    const energyFee = t1*e1 + t2*e2 + t3*e3;
+    const climateFee = totalKwh * rates.climate;
+    const fuelFee = totalKwh * rates.fuel;
+    const subtotal = basicFee + energyFee + climateFee + fuelFee;
+    const vat = subtotal * (rates.vat/100);
+    const fund = subtotal * (rates.fund/100);
+    const total = subtotal + vat + fund;
+    const estimated = total * (rates.calibration || 1);
+
+    return { basicFee, energyFee, climateFee, fuelFee, subtotal, vat, fund, total, estimated,
+             tierLabel, tierIdx, tiers:[t1,t2,t3], cuts };
+  }
+
+  function won(n){ return Math.round(n).toLocaleString("ko-KR") + "원"; }
+
+  function drawDial(tierIdx, totalKwh, cuts){
+    const svg = document.getElementById("dialSvg");
+    const colors = ["", "var(--dial-1)", "var(--dial-2)", "var(--dial-3)"];
+    const cap = cuts[1] * 1.15; // 다이얼 최대치 기준
+    const frac = Math.max(0, Math.min(1, totalKwh / cap));
+    const r = 36, cx = 43, cy = 43;
+    const circumference = 2 * Math.PI * r;
+    const dash = circumference * frac;
+    svg.innerHTML = `
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2a3134" stroke-width="8"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[tierIdx]}" stroke-width="8"
+        stroke-linecap="round" stroke-dasharray="${dash} ${circumference}"
+        transform="rotate(-90 ${cx} ${cy})"/>
+      <text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="15" font-weight="700" fill="var(--text)">${tierIdx}</text>
+    `;
+  }
+
+  function renderBill(){
+    const monthStr = billMonth.value;
+    if(!monthStr) return;
+    const { total, count, firstDateInMonth, lastDate } = monthlyUsage(monthStr);
+    const summer = isSummer(monthStr);
+    const result = calcBill(total, summer);
+
+    document.getElementById("totalKwh").innerHTML = `${total.toFixed(1)}<span>kWh</span>`;
+    const tag = document.getElementById("tierTag");
+    tag.textContent = result.tierLabel + (summer ? " · 여름철 구간" : "");
+    tag.className = "tag t" + result.tierIdx;
+    drawDial(result.tierIdx, total, result.cuts);
+
+    const dayInfo = document.getElementById("dayInfo");
+    if(count === 0){
+      dayInfo.textContent = "이 달에는 아직 이어지는 검침 기록이 2개 이상 없어요. 계량기 숫자를 계속 입력해 주세요.";
+    } else {
+      dayInfo.textContent = `${firstDateInMonth} ~ ${lastDate} 구간 검침 ${count}회 반영 · 일 평균 약 ${(total / Math.max(1, dayDiff(firstDateInMonth,lastDate))).toFixed(1)} kWh`;
+    }
+
+    const rows = [
+      ["기본요금 (" + result.tierLabel + ")", won(result.basicFee)],
+      ["전력량요금", won(result.energyFee) + ` (1단계 ${result.tiers[0].toFixed(1)}·2단계 ${result.tiers[1].toFixed(1)}·3단계 ${result.tiers[2].toFixed(1)} kWh)`],
+      ["기후환경요금", won(result.climateFee)],
+      ["연료비조정요금", won(result.fuelFee)],
+      ["부가가치세 (" + rates.vat + "%)", won(result.vat)],
+      ["전력산업기반기금 (" + rates.fund + "%)", won(result.fund)],
+    ];
+    let html = rows.map(r=> `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+    html += `<tr class="total"><td>표준 계산 합계</td><td>${won(result.total)}</td></tr>`;
+    if(rates.calibration && Math.abs(rates.calibration - 1) > 0.001){
+      html += `<tr class="total-est"><td>보정 반영 예상 청구액</td><td>${won(result.estimated)}</td></tr>`;
+    }
+    document.getElementById("breakdownTable").innerHTML = html;
+
+    document.getElementById("calNote").textContent =
+      "아파트 관리비 고지서에는 세대 개별 사용량 외에 승강기·복도 등 공용전기료가 함께 청구되는 경우가 많아, 실제 청구액과 차이가 날 수 있어요. '설정 > 기준 고지서로 보정하기'에서 실제 고지서로 보정하면 더 정확해져요.";
+  }
+
+  function dayDiff(a,b){
+    if(!a || !b) return 1;
+    const d = (new Date(b) - new Date(a)) / 86400000;
+    return d > 0 ? d : 1;
+  }
+
+  billMonth.addEventListener("change", renderBill);
+
+  /* ---------------- 설정: 단가 ---------------- */
+  function fillRateInputs(){
+    document.getElementById("basic1").value = rates.basic[0];
+    document.getElementById("basic2").value = rates.basic[1];
+    document.getElementById("basic3").value = rates.basic[2];
+    document.getElementById("energy1").value = rates.energy[0];
+    document.getElementById("energy2").value = rates.energy[1];
+    document.getElementById("energy3").value = rates.energy[2];
+    document.getElementById("normalCut1").value = rates.normalCut[0];
+    document.getElementById("normalCut2").value = rates.normalCut[1];
+    document.getElementById("summerCut1").value = rates.summerCut[0];
+    document.getElementById("summerCut2").value = rates.summerCut[1];
+    document.getElementById("climateRate").value = rates.climate;
+    document.getElementById("fuelRate").value = rates.fuel;
+    document.getElementById("vatRate").value = rates.vat;
+    document.getElementById("fundRate").value = rates.fund;
+  }
+  fillRateInputs();
+
+  document.getElementById("btnSaveRates").addEventListener("click", ()=>{
+    rates.basic = [1,2,3].map(i=> parseFloat(document.getElementById("basic"+i).value) || 0);
+    rates.energy = [1,2,3].map(i=> parseFloat(document.getElementById("energy"+i).value) || 0);
+    rates.normalCut = [1,2].map(i=> parseFloat(document.getElementById("normalCut"+i).value) || 0);
+    rates.summerCut = [1,2].map(i=> parseFloat(document.getElementById("summerCut"+i).value) || 0);
+    rates.climate = parseFloat(document.getElementById("climateRate").value) || 0;
+    rates.fuel = parseFloat(document.getElementById("fuelRate").value) || 0;
+    rates.vat = parseFloat(document.getElementById("vatRate").value) || 0;
+    rates.fund = parseFloat(document.getElementById("fundRate").value) || 0;
+    save(LS_RATES, rates);
+    alert("단가를 저장했어요.");
+    renderBill();
+  });
+
+  /* ---------------- 설정: 보정계수 ---------------- */
+  function updateCalRatioLabel(){
+    const el = document.getElementById("calRatio");
+    if(rates.calibration && Math.abs(rates.calibration-1) > 0.001){
+      el.textContent = `현재 보정계수: ×${rates.calibration.toFixed(3)} (표준 계산 금액에 곱해서 예상 청구액을 보여줘요)`;
+    } else {
+      el.textContent = "아직 보정계수가 적용되지 않았어요 (표준 계산식 그대로 사용 중).";
+    }
+  }
+  updateCalRatioLabel();
+
+  document.getElementById("btnCal").addEventListener("click", ()=>{
+    const kwh = parseFloat(document.getElementById("calKwh").value);
+    const won_ = parseFloat(document.getElementById("calWon").value);
+    if(!kwh || !won_){ alert("기준 사용량과 청구액을 입력해 주세요."); return; }
+    const summerGuess = false; // 기준월 계절 정보가 없으므로 일반 구간 기준으로 계산
+    const std = calcBill(kwh, summerGuess).total;
+    rates.calibration = won_ / std;
+    save(LS_RATES, rates);
+    updateCalRatioLabel();
+    renderBill();
+  });
+
+  /* ---------------- 설정: GitHub 동기화 ---------------- */
+  document.getElementById("ghRepo").value = ghConfig.repo || "";
+  document.getElementById("ghPath").value = ghConfig.path || "data/electric.json";
+  document.getElementById("ghToken").value = ghToken || "";
+
+  function saveGhConfig(){
+    ghConfig.repo = document.getElementById("ghRepo").value.trim();
+    ghConfig.path = document.getElementById("ghPath").value.trim() || "data/electric.json";
+    save(LS_GH, ghConfig);
+    ghToken = document.getElementById("ghToken").value.trim();
+    if(ghToken) localStorage.setItem(LS_TOKEN, ghToken);
+    else localStorage.removeItem(LS_TOKEN);
+  }
+
+  function b64EncodeUtf8(str){
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function b64DecodeUtf8(str){
+    return decodeURIComponent(escape(atob(str)));
+  }
+
+  function setSyncStatus(msg, cls){
+    const el = document.getElementById("syncStatus");
+    el.textContent = msg;
+    el.className = "sync-status" + (cls ? " "+cls : "");
+  }
+
+  async function ghGetFile(){
+    const url = `https://api.github.com/repos/${ghConfig.repo}/contents/${ghConfig.path}`;
+    const res = await fetch(url, { headers: ghToken ? { Authorization: "token " + ghToken } : {} });
+    if(res.status === 404) return { exists:false, sha:null, data:null };
+    if(!res.ok) throw new Error("불러오기 실패 (" + res.status + ")");
+    const json = await res.json();
+    const content = JSON.parse(b64DecodeUtf8(json.content.replace(/\n/g,"")));
+    return { exists:true, sha: json.sha, data: content };
+  }
+
+  document.getElementById("btnPull").addEventListener("click", async ()=>{
+    saveGhConfig();
+    if(!ghConfig.repo){ alert("저장소(owner/repo)를 입력해 주세요."); return; }
+    setSyncStatus("불러오는 중…");
+    try{
+      const { exists, data } = await ghGetFile();
+      if(!exists){ setSyncStatus("아직 저장소에 데이터가 없어요. '가족과 공유 저장'으로 먼저 올려보세요.", "err"); return; }
+      if(data.readings) { readings = data.readings; save(LS_READINGS, readings); }
+      if(data.rates)     { rates = Object.assign({}, defaultRates, data.rates); save(LS_RATES, rates); fillRateInputs(); updateCalRatioLabel(); }
+      renderLog(); updateDiffPreview(); renderBill();
+      setSyncStatus("불러왔어요 · " + new Date().toLocaleString("ko-KR"), "ok");
+    }catch(e){
+      setSyncStatus("불러오기 실패: " + e.message, "err");
+    }
+  });
+
+  document.getElementById("btnPush").addEventListener("click", async ()=>{
+    saveGhConfig();
+    if(!ghConfig.repo){ alert("저장소(owner/repo)를 입력해 주세요."); return; }
+    if(!ghToken){ alert("공유 저장에는 쓰기 권한이 있는 GitHub 토큰이 필요해요."); return; }
+    setSyncStatus("저장하는 중…");
+    try{
+      const { exists, sha } = await ghGetFile();
+      const payload = { readings, rates, updatedAt: new Date().toISOString() };
+      const body = {
+        message: "전기 검침 데이터 업데이트 " + new Date().toISOString().slice(0,10),
+        content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
+      };
+      if(exists) body.sha = sha;
+      const url = `https://api.github.com/repos/${ghConfig.repo}/contents/${ghConfig.path}`;
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { Authorization: "token " + ghToken, "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok){
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.message || ("저장 실패 " + res.status));
+      }
+      setSyncStatus("가족과 공유 저장 완료 · " + new Date().toLocaleString("ko-KR"), "ok");
+    }catch(e){
+      setSyncStatus("저장 실패: " + e.message, "err");
+    }
+  });
+
+  /* ---------------- 초기화 ---------------- */
+  document.getElementById("btnReset").addEventListener("click", ()=>{
+    if(!confirm("이 기기에 저장된 검침 기록과 설정을 모두 삭제할까요? (공유 저장소의 데이터는 남아있어요)")) return;
+    localStorage.removeItem(LS_READINGS);
+    localStorage.removeItem(LS_RATES);
+    localStorage.removeItem(LS_GH);
+    localStorage.removeItem(LS_TOKEN);
+    location.reload();
+  });
+
+  /* ---------------- 초기 렌더 ---------------- */
+  renderLog();
+  updateDiffPreview();
+  renderBill();
+
+})();
+</script>
+</body>
+</html>
