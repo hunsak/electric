@@ -1,0 +1,29 @@
+{
+  "readings": [],
+  "rates": {
+    "basic": [
+      910,
+      1600,
+      7300
+    ],
+    "energy": [
+      120,
+      214.6,
+      307.3
+    ],
+    "normalCut": [
+      200,
+      400
+    ],
+    "summerCut": [
+      300,
+      450
+    ],
+    "climate": 9,
+    "fuel": 5,
+    "vat": 10,
+    "fund": 3.7,
+    "calibration": 1
+  },
+  "updatedAt": "2026-07-20T23:03:35.026Z"
+}
