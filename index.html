@@ -77,8 +77,13 @@
     background: var(--panel-2); color:var(--text); font-size:15px; font-family:inherit;
   }
   input:focus, select:focus{ outline:none; border-color: var(--focus); box-shadow:0 0 0 3px rgba(127,209,192,0.15); }
-  .row{display:flex; gap:10px;}
-  .row > div{flex:1;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .row > div{flex:1 1 140px; min-width:0;}
+  input, select{ min-width:0; }
+  @media (max-width: 420px){
+    .row{ flex-direction:column; gap:12px; }
+    .row > div{ flex:1 1 auto; width:100%; }
+  }
   .field{margin-bottom:12px;}
 
   button.btn{
@@ -159,7 +164,7 @@
         </div>
         <div class="field">
           <label>계량기 지침 (kWh)</label>
-          <input type="number" id="inValue" step="0.1" min="0" placeholder="예: 12345.6">
+          <input type="number" id="inValue" inputmode="decimal" step="0.1" min="0" placeholder="예: 12345.6">
         </div>
       </div>
       <button class="btn primary" id="btnAdd" style="width:100%;">저장</button>
@@ -341,7 +346,7 @@
 
   let readings = load(LS_READINGS, []); // [{date:'YYYY-MM-DD', value: number}]
   let rates    = Object.assign({}, defaultRates, load(LS_RATES, {}));
-  let ghConfig = load(LS_GH, { repo:"", path:"data/electric.json" });
+  let ghConfig = load(LS_GH, { repo:"hunsak/electric", path:"data/electric.json" });
   let ghToken  = localStorage.getItem(LS_TOKEN) || "";
 
   readings.sort((a,b)=> a.date.localeCompare(b.date));
