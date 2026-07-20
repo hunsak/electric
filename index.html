@@ -693,10 +693,26 @@
     location.reload();
   });
 
+  async function autoLoadFromGithub(){
+    if(!ghConfig.repo) return;
+    setSyncStatus("자동으로 불러오는 중…");
+    try{
+      const { exists, data } = await ghGetFile();
+      if(!exists){ setSyncStatus("공유 저장소에 아직 데이터가 없어요.", "err"); return; }
+      if(data.readings) { readings = data.readings; save(LS_READINGS, readings); }
+      if(data.rates)     { rates = Object.assign({}, defaultRates, data.rates); save(LS_RATES, rates); fillRateInputs(); updateCalRatioLabel(); }
+      renderLog(); updateDiffPreview(); renderBill();
+      setSyncStatus("자동으로 불러왔어요 · " + new Date().toLocaleString("ko-KR"), "ok");
+    }catch(e){
+      setSyncStatus("자동 불러오기 실패: " + e.message, "err");
+    }
+  }
+
   /* ---------------- 초기 렌더 ---------------- */
   renderLog();
   updateDiffPreview();
   renderBill();
+  autoLoadFromGithub();
 
 })();
 </script>
