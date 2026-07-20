@@ -1,5 +1,10 @@
 {
-  "readings": [],
+  "readings": [
+    {
+      "date": "2026-07-20",
+      "value": 3257
+    }
+  ],
   "rates": {
     "basic": [
       910,
@@ -25,5 +30,5 @@
     "fund": 3.7,
     "calibration": 1
   },
-  "updatedAt": "2026-07-20T23:03:35.026Z"
+  "updatedAt": "2026-07-20T23:18:36.635Z"
 }
