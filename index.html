@@ -308,6 +308,14 @@
   const LS_RATES    = "eb_rates";
   const LS_GH       = "eb_gh";      // owner/repo, path (토큰 제외)
   const LS_TOKEN    = "eb_token";   // 토큰은 별도 보관, 공유 JSON에는 절대 포함하지 않음
+  const LS_LOCAL_TS = "eb_local_ts"; // 이 기기에서 마지막으로 데이터가 바뀐 시각
+
+  function touchLocal(ts){
+    localStorage.setItem(LS_LOCAL_TS, ts || new Date().toISOString());
+  }
+  function getLocalTs(){
+    return localStorage.getItem(LS_LOCAL_TS) || null;
+  }
 
   const defaultRates = {
     basic:  [910, 1600, 7300],
@@ -386,9 +394,11 @@
     else { readings.push({date:d, value:v}); }
     readings.sort((a,b)=> a.date.localeCompare(b.date));
     save(LS_READINGS, readings);
+    touchLocal();
     inValue.value = "";
     updateDiffPreview();
     renderLog();
+    autoPushIfPossible();
   });
 
   function renderLog(){
@@ -418,8 +428,10 @@
       b.addEventListener("click", ()=>{
         readings = readings.filter(r=> r.date !== b.dataset.del);
         save(LS_READINGS, readings);
+        touchLocal();
         renderLog();
         updateDiffPreview();
+        autoPushIfPossible();
       });
     });
   }
@@ -574,8 +586,10 @@
     rates.vat = parseFloat(document.getElementById("vatRate").value) || 0;
     rates.fund = parseFloat(document.getElementById("fundRate").value) || 0;
     save(LS_RATES, rates);
+    touchLocal();
     alert("단가를 저장했어요.");
     renderBill();
+    autoPushIfPossible();
   });
 
   /* ---------------- 설정: 보정계수 ---------------- */
@@ -597,8 +611,10 @@
     const std = calcBill(kwh, summerGuess).total;
     rates.calibration = won_ / std;
     save(LS_RATES, rates);
+    touchLocal();
     updateCalRatioLabel();
     renderBill();
+    autoPushIfPossible();
   });
 
   /* ---------------- 설정: GitHub 동기화 ---------------- */
@@ -647,6 +663,7 @@
       if(!exists){ setSyncStatus("아직 저장소에 데이터가 없어요. '가족과 공유 저장'으로 먼저 올려보세요.", "err"); return; }
       if(data.readings) { readings = data.readings; save(LS_READINGS, readings); }
       if(data.rates)     { rates = Object.assign({}, defaultRates, data.rates); save(LS_RATES, rates); fillRateInputs(); updateCalRatioLabel(); }
+      touchLocal(data.updatedAt);
       renderLog(); updateDiffPreview(); renderBill();
       setSyncStatus("불러왔어요 · " + new Date().toLocaleString("ko-KR"), "ok");
     }catch(e){
@@ -654,16 +671,15 @@
     }
   });
 
-  document.getElementById("btnPush").addEventListener("click", async ()=>{
-    saveGhConfig();
-    if(!ghConfig.repo){ alert("저장소(owner/repo)를 입력해 주세요."); return; }
-    if(!ghToken){ alert("공유 저장에는 쓰기 권한이 있는 GitHub 토큰이 필요해요."); return; }
-    setSyncStatus("저장하는 중…");
+  async function pushToGithub(silent){
+    if(!ghConfig.repo || !ghToken) return false;
+    if(!silent) setSyncStatus("저장하는 중…");
     try{
       const { exists, sha } = await ghGetFile();
-      const payload = { readings, rates, updatedAt: new Date().toISOString() };
+      const nowTs = new Date().toISOString();
+      const payload = { readings, rates, updatedAt: nowTs };
       const body = {
-        message: "전기 검침 데이터 업데이트 " + new Date().toISOString().slice(0,10),
+        message: "전기 검침 데이터 업데이트 " + nowTs.slice(0,10),
         content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
       };
       if(exists) body.sha = sha;
@@ -677,10 +693,24 @@
         const err = await res.json().catch(()=>({}));
         throw new Error(err.message || ("저장 실패 " + res.status));
       }
-      setSyncStatus("가족과 공유 저장 완료 · " + new Date().toLocaleString("ko-KR"), "ok");
+      touchLocal(nowTs); // 방금 올린 내용과 로컬 시각을 맞춰둠
+      setSyncStatus((silent ? "자동으로 " : "") + "가족과 공유 저장 완료 · " + new Date().toLocaleString("ko-KR"), "ok");
+      return true;
     }catch(e){
-      setSyncStatus("저장 실패: " + e.message, "err");
+      setSyncStatus((silent ? "자동 " : "") + "저장 실패: " + e.message, "err");
+      return false;
     }
+  }
+
+  function autoPushIfPossible(){
+    if(ghConfig.repo && ghToken) pushToGithub(true);
+  }
+
+  document.getElementById("btnPush").addEventListener("click", ()=>{
+    saveGhConfig();
+    if(!ghConfig.repo){ alert("저장소(owner/repo)를 입력해 주세요."); return; }
+    if(!ghToken){ alert("공유 저장에는 쓰기 권한이 있는 GitHub 토큰이 필요해요."); return; }
+    pushToGithub(false);
   });
 
   /* ---------------- 초기화 ---------------- */
@@ -699,8 +729,15 @@
     try{
       const { exists, data } = await ghGetFile();
       if(!exists){ setSyncStatus("공유 저장소에 아직 데이터가 없어요.", "err"); return; }
+      const localTs = getLocalTs();
+      const remoteTs = data.updatedAt || null;
+      if(localTs && remoteTs && remoteTs <= localTs){
+        setSyncStatus("이 기기 데이터가 이미 최신이라 그대로 유지했어요 · " + new Date().toLocaleString("ko-KR"), "ok");
+        return;
+      }
       if(data.readings) { readings = data.readings; save(LS_READINGS, readings); }
       if(data.rates)     { rates = Object.assign({}, defaultRates, data.rates); save(LS_RATES, rates); fillRateInputs(); updateCalRatioLabel(); }
+      touchLocal(remoteTs);
       renderLog(); updateDiffPreview(); renderBill();
       setSyncStatus("자동으로 불러왔어요 · " + new Date().toLocaleString("ko-KR"), "ok");
     }catch(e){
