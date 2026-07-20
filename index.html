@@ -358,10 +358,18 @@
   });
 
   /* ---------------- 검침 입력 ---------------- */
+  function todayLocalStr(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
   const inDate = document.getElementById("inDate");
   const inValue = document.getElementById("inValue");
   const today = new Date();
-  inDate.value = today.toISOString().slice(0,10);
+  inDate.value = todayLocalStr();
 
   function prevReadingBefore(dateStr){
     const before = readings.filter(r=> r.date < dateStr);
@@ -438,7 +446,7 @@
 
   /* ---------------- 요금 계산 ---------------- */
   const billMonth = document.getElementById("billMonth");
-  billMonth.value = today.toISOString().slice(0,7);
+  billMonth.value = todayLocalStr().slice(0,7);
 
   function isSummer(monthStr){
     const m = parseInt(monthStr.split("-")[1], 10);
