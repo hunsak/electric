@@ -1,0 +1,32 @@
+{
+  "name": "우리집 전기계량기",
+  "short_name": "전기계량기",
+  "description": "매일 계량기 숫자를 입력하면 누진세까지 계산해서 이번 달 전기요금을 알려주는 가족 공유 앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14181a",
+  "theme_color": "#14181a",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

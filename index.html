@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>우리집 전기계량기</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14181a">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="전기계량기">
 <style>
   :root{
     --bg: #14181a;
@@ -762,6 +770,13 @@
     }catch(e){
       setSyncStatus("자동 불러오기 실패: " + e.message, "err");
     }
+  }
+
+  /* ---------------- PWA: 서비스 워커 등록 ---------------- */
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("sw.js").catch(()=>{ /* 등록 실패해도 앱은 정상 동작 */ });
+    });
   }
 
   /* ---------------- 초기 렌더 ---------------- */
